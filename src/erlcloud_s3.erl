@@ -131,8 +131,8 @@ copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, Options, Con
          {"x-amz-acl", encode_acl(proplists:get_value(acl, Options))}],
     {Headers, _Body} = s3_request(Config, put, DestBucketName, [$/|DestKeyName],
                                   "", [], <<>>, RequestHeaders),
-    [{copy_source_version_id, proplists:get_value("x-amz-copy-source-version-id", Headers, "false")},
-     {version_id, proplists:get_value("x-amz-version-id", Headers, "null")}].
+    [{copy_source_version_id, header_value("x-amz-copy-source-version-id", Headers, "false")},
+     {version_id, header_value("x-amz-version-id", Headers, "null")}].
 
 -spec create_bucket(string()) -> ok.
 
@@ -204,8 +204,8 @@ delete_object(BucketName, Key) ->
 delete_object(BucketName, Key, Config)
   when is_list(BucketName), is_list(Key) ->
     {Headers, _Body} = s3_request(Config, delete, BucketName, [$/|Key], "", [], <<>>, []),
-    Marker = proplists:get_value("x-amz-delete-marker", Headers, "false"),
-    Id = proplists:get_value("x-amz-version-id", Headers, "null"),
+    Marker = header_value("x-amz-delete-marker", Headers, "false"),
+    Id = header_value("x-amz-version-id", Headers, "null"),
     [{delete_marker, list_to_existing_atom(Marker)},
      {version_id, Id}].
 
@@ -222,8 +222,8 @@ delete_object_version(BucketName, Key, Version, Config)
        is_list(Version)->
     {Headers, _Body} = s3_request(Config, delete, BucketName, [$/|Key],
                                   ["versionId=", Version], [], <<>>, []),
-    Marker = proplists:get_value("x-amz-delete-marker", Headers, "false"),
-    Id = proplists:get_value("x-amz-version-id", Headers, "null"),
+    Marker = header_value("x-amz-delete-marker", Headers, "false"),
+    Id = header_value("x-amz-version-id", Headers, "null"),
     [{delete_marker, list_to_existing_atom(Marker)},
      {version_id, Id}].
 
@@ -421,11 +421,11 @@ get_object(BucketName, Key, Options, Config) ->
                       Version   -> ["versionId=", Version]
                   end,
     {Headers, Body} = s3_request(Config, get, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders),
-    [{etag, proplists:get_value("etag", Headers)},
-     {content_length, proplists:get_value("content-length", Headers)},
-     {content_type, proplists:get_value("content-type", Headers)},
-     {delete_marker, list_to_existing_atom(proplists:get_value("x-amz-delete-marker", Headers, "false"))},
-     {version_id, proplists:get_value("x-amz-version-id", Headers, "null")},
+    [{etag, header_value("etag", Headers)},
+     {content_length, header_value("content-length", Headers)},
+     {content_type, header_value("content-type", Headers)},
+     {delete_marker, list_to_existing_atom(header_value("x-amz-delete-marker", Headers, "false"))},
+     {version_id, header_value("x-amz-version-id", Headers, "null")},
      {content, Body}|
      extract_metadata(Headers)].
 
@@ -483,12 +483,12 @@ get_object_metadata(BucketName, Key, Options, Config) ->
                   end,
     {Headers, _Body} = s3_request(Config, head, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders),
 
-    [{last_modified, proplists:get_value("last-modified", Headers)},
-     {etag, proplists:get_value("etag", Headers)},
-     {content_length, proplists:get_value("content-length", Headers)},
-     {content_type, proplists:get_value("content-type", Headers)},
-     {delete_marker, list_to_existing_atom(proplists:get_value("x-amz-delete-marker", Headers, "false"))},
-     {version_id, proplists:get_value("x-amz-version-id", Headers, "false")}|extract_metadata(Headers)].
+    [{last_modified, header_value("last-modified", Headers)},
+     {etag, header_value("etag", Headers)},
+     {content_length, header_value("content-length", Headers)},
+     {content_type, header_value("content-type", Headers)},
+     {delete_marker, list_to_existing_atom(header_value("x-amz-delete-marker", Headers, "false"))},
+     {version_id, header_value("x-amz-version-id", Headers, "false")}|extract_metadata(Headers)].
 
 extract_metadata(Headers) ->
     [{Key, Value} || {Key = "x-amz-meta-" ++ _, Value} <- Headers].
@@ -502,8 +502,8 @@ get_object_torrent(BucketName, Key) ->
 
 get_object_torrent(BucketName, Key, Config) ->
     {Headers, Body} = s3_request(Config, get, BucketName, [$/|Key], "torrent", [], <<>>, []),
-    [{delete_marker, list_to_existing_atom(proplists:get_value("x-amz-delete-marker", Headers, "false"))},
-     {version_id, proplists:get_value("x-amz-delete-marker", Headers, "false")},
+    [{delete_marker, list_to_existing_atom(header_value("x-amz-delete-marker", Headers, "false"))},
+     {version_id, header_value("x-amz-delete-marker", Headers, "false")},
      {torrent, Body}].
 
 -spec list_object_versions(string()) -> proplist().
@@ -606,7 +606,7 @@ put_object(BucketName, Key, Value, Options, HTTPHeaders, Config)
     POSTData = {iolist_to_binary(Value), ContentType},
     {Headers, _Body} = s3_request(Config, put, BucketName, [$/|Key], "", [],
                                   POSTData, RequestHeaders),
-    [{version_id, proplists:get_value("x-amz-version-id", Headers, "null")}].
+    [{version_id, header_value("x-amz-version-id", Headers, "null")}].
 
 -spec set_object_acl(string(), string(), proplist()) -> ok.
 
@@ -716,7 +716,7 @@ upload_part(BucketName, Key, UploadId, PartNumber, Value, HTTPHeaders, Config)
                                                              {"partNumber", integer_to_list(PartNumber)}],
                      POSTData, HTTPHeaders) of
         {ok, {Headers, _Body}} ->
-            {ok, [{etag, proplists:get_value("etag", Headers)}]};
+            {ok, [{etag, header_value("etag", Headers)}]};
         Error ->
             Error
     end.
@@ -1020,3 +1020,9 @@ port_spec(#aws_config{s3_port=80}) ->
     "";
 port_spec(#aws_config{s3_port=Port}) ->
     [":", erlang:integer_to_list(Port)].
+
+header_value(Key, Headers) ->
+    erlcloud_httpc:header_value(Key, Headers).
+
+header_value(Key, Headers, Default) ->
+    erlcloud_httpc:header_value(Key, Headers, Default).
