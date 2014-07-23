@@ -11,5 +11,14 @@
 
 -export([request/6]).
 
+%% NOTE: erlcloud 0.4.1 expects a patched version of lhttpc that
+%% returns headers as lower case strings. To support other versions of
+%% lhttpc we need to downcase headers before returning them.
 request(URL, Method, Hdrs, Body, Timeout, _Config) ->
-    lhttpc:request(URL, Method, Hdrs, Body, Timeout, []).
+    case lhttpc:request(URL, Method, Hdrs, Body, Timeout, []) of
+        {ok, {Status, ResponseHdrs, ResponseBody}} ->
+            HdrsLower = [{string:to_lower(K), V} || {K, V} <- ResponseHdrs],
+            {ok, {Status, HdrsLower, ResponseBody}};
+        Response ->
+            Response
+    end.
