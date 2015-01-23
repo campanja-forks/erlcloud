@@ -720,7 +720,7 @@ upload_part(BucketName, Key, UploadId, PartNumber, Value, HTTPHeaders, Config)
                                                              {"partNumber", integer_to_list(PartNumber)}],
                      POSTData, HTTPHeaders) of
         {ok, {Headers, _Body}} ->
-            {ok, [{etag, proplists:get_value("etag", Headers)}]};
+            {ok, [{etag, lhttpc_lib:header_value("etag", Headers)}]};
         Error ->
             Error
     end.
@@ -940,7 +940,7 @@ s3_xml_request2(Config, Method, Host, Path, Subresource, Params, POSTData, Heade
     end.
 
 s3_request2_no_update(Config, Method, Host, Path, Subresource, Params, Body, Headers0) ->
-    ContentType = proplists:get_value("content-type", Headers0, ""),
+    ContentType = lhttpc_lib:header_value("content-type", Headers0, ""),
     ContentMD5 = case Body of
                      <<>> ->
                          "";
