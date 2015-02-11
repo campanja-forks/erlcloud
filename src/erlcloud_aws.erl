@@ -3,6 +3,7 @@
 -export([aws_request/5, aws_request/6, aws_request/7, aws_request/8,
          aws_request_xml/5, aws_request_xml/6, aws_request_xml/7, aws_request_xml/8,
          aws_request2/7,
+         aws_request3/7,
          aws_request_xml2/5, aws_request_xml2/7,
          aws_request_form/8,
          param_list/2, default_config/0, update_config/1, format_timestamp/1,
@@ -63,12 +64,21 @@ aws_request(Method, Protocol, Host, Port, Path, Params, AccessKeyID, SecretAcces
 aws_request2(Method, Protocol, Host, Port, Path, Params, Config) ->
     case update_config(Config) of
         {ok, Config1} ->
-            aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, Config1);
+            aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, Config1, true);
         {error, Reason} ->
             {error, Reason}
     end.
 
-aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, #aws_config{} = Config) ->
+aws_request3(Method, Protocol, Host, Port, Path, Params, Config) ->
+    case update_config(Config) of
+        {ok, Config1} ->
+            aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, Config1, false);
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+
+aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, #aws_config{} = Config, AddEqualToEmpty) ->
     Timestamp = format_timestamp(erlang:universaltime()),
     QParams = lists:sort(
                 [{"Timestamp", Timestamp},
@@ -79,8 +89,8 @@ aws_request2_no_update(Method, Protocol, Host, Port, Path, Params, #aws_config{}
                         undefined -> [];
                         Token -> [{"SecurityToken", Token}]
                     end),
-    
-    QueryToSign = erlcloud_http:make_query_string(QParams),
+
+    QueryToSign = erlcloud_http:make_query_string(QParams, AddEqualToEmpty),
     RequestToSign = [string:to_upper(atom_to_list(Method)), $\n,
                      string:to_lower(Host), $\n, Path, $\n, QueryToSign],
     Signature = base64:encode(erlcloud_util:sha_mac(Config#aws_config.secret_access_key, RequestToSign)),

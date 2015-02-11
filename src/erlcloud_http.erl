@@ -1,12 +1,19 @@
 -module(erlcloud_http).
--export([make_query_string/1, url_encode/1, url_encode_loose/1]).
+-export([make_query_string/1, make_query_string/2,
+         url_encode/1, url_encode_loose/1]).
 
 make_query_string(Params) ->
+    make_query_string(Params, false).
+
+make_query_string(Params, AddEqualToEmpty) when is_boolean(AddEqualToEmpty) ->
     string:join([case Value of
-                     [] -> [Key, "="];
+                     [] when AddEqualToEmpty -> [Key, "="];
+                     [] -> Key;
                      _ -> [Key, "=", url_encode(value_to_string(Value))]
                  end
-                 || {Key, Value} <- Params, Value =/= none, Value =/= undefined], "&").
+                 || {Key, Value} <- Params,
+                    Value =/= none,
+                    Value =/= undefined], "&").
 
 value_to_string(Integer) when is_integer(Integer) -> integer_to_list(Integer);
 value_to_string(Atom) when is_atom(Atom) -> atom_to_list(Atom);
