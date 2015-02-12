@@ -426,12 +426,12 @@ get_object(BucketName, Key, Options, Config) ->
                       Version   -> ["versionId=", Version]
                   end,
     {Headers, Body} = s3_request(Config, get, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders),
-    [{etag, proplists:get_value("etag", Headers)},
-     {content_length, proplists:get_value("content-length", Headers)},
-     {content_type, proplists:get_value("content-type", Headers)},
-     {content_encoding, proplists:get_value("content-encoding", Headers)},
-     {delete_marker, list_to_existing_atom(proplists:get_value("x-amz-delete-marker", Headers, "false"))},
-     {version_id, proplists:get_value("x-amz-version-id", Headers, "null")},
+    [{etag, lhttpc_lib:header_value("etag", Headers)},
+     {content_length, lhttpc_lib:header_value("content-length", Headers)},
+     {content_type, lhttpc_lib:header_value("content-type", Headers)},
+     {content_encoding, lhttpc_lib:header_value("content-encoding", Headers)},
+     {delete_marker, list_to_existing_atom(lhttpc_lib:header_value("x-amz-delete-marker", Headers, "false"))},
+     {version_id, lhttpc_lib:header_value("x-amz-version-id", Headers, "null")},
      {content, Body}|
      extract_metadata(Headers)].
 
@@ -489,13 +489,13 @@ get_object_metadata(BucketName, Key, Options, Config) ->
                   end,
     {Headers, _Body} = s3_request(Config, head, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders),
 
-    [{last_modified, proplists:get_value("last-modified", Headers)},
-     {etag, proplists:get_value("etag", Headers)},
-     {content_length, proplists:get_value("content-length", Headers)},
-     {content_type, proplists:get_value("content-type", Headers)},
-     {content_encoding, proplists:get_value("content-encoding", Headers)},
-     {delete_marker, list_to_existing_atom(proplists:get_value("x-amz-delete-marker", Headers, "false"))},
-     {version_id, proplists:get_value("x-amz-version-id", Headers, "false")}|extract_metadata(Headers)].
+    [{last_modified, lhttpc_lib:header_value("last-modified", Headers)},
+     {etag, lhttpc_lib:header_value("etag", Headers)},
+     {content_length, lhttpc_lib:header_value("content-length", Headers)},
+     {content_type, lhttpc_lib:header_value("content-type", Headers)},
+     {content_encoding, lhttpc_lib:header_value("content-encoding", Headers)},
+     {delete_marker, list_to_existing_atom(lhttpc_lib:header_value("x-amz-delete-marker", Headers, "false"))},
+     {version_id, lhttpc_lib:header_value("x-amz-version-id", Headers, "false")}|extract_metadata(Headers)].
 
 extract_metadata(Headers) ->
     [{Key, Value} || {Key = "x-amz-meta-" ++ _, Value} <- Headers].
@@ -720,7 +720,7 @@ upload_part(BucketName, Key, UploadId, PartNumber, Value, HTTPHeaders, Config)
                                                              {"partNumber", integer_to_list(PartNumber)}],
                      POSTData, HTTPHeaders) of
         {ok, {Headers, _Body}} ->
-            {ok, [{etag, proplists:get_value("etag", Headers)}]};
+            {ok, [{etag, lhttpc_lib:header_value("etag", Headers)}]};
         Error ->
             Error
     end.
