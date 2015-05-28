@@ -335,32 +335,51 @@ remove_permission(QueueName, Label, Config)
     sqs_simple_request(Config, QueueName, "RemovePermission",
                        [{"Label", Label}]).
 
--spec send_message/2 :: (string(), string()) -> proplist().
-send_message(QueueName, MessageBody) ->
-    send_message(QueueName, MessageBody, default_config()).
+-spec send_message/2 :: (string(), [string()]) -> proplist().
+send_message(QueueName, Messages) ->
+    send_message(QueueName, Messages, default_config()).
 
--spec send_message/3 :: (string(), string(), 0..900 | none | aws_config()) -> proplist().
-send_message(QueueName, MessageBody, Config)
+-spec send_message/3 :: (string(), [string()], 0..900 | none | aws_config()) -> proplist().
+send_message(QueueName, Messages, Config)
   when is_record(Config, aws_config) ->
-    send_message(QueueName, MessageBody, none, Config);
-send_message(QueueName, MessageBody, DelaySeconds) ->
-    send_message(QueueName, MessageBody, DelaySeconds, default_config()).
+    send_message(QueueName, Messages, none, Config);
+send_message(QueueName, Messages, DelaySeconds) ->
+    send_message(QueueName, Messages, DelaySeconds, default_config()).
 
--spec send_message/4 :: (string(), string(), 0..900 | none, aws_config()) -> proplist().
-send_message(QueueName, MessageBody, DelaySeconds, Config)
-  when is_list(QueueName), is_list(MessageBody),
+-spec send_message/4 :: (string(), [string()], 0..900 | none, aws_config()) -> proplist().
+send_message(QueueName, Messages, DelaySeconds, Config)
+  when is_list(QueueName), is_list(Messages),
        (DelaySeconds >= 0 andalso DelaySeconds =< 900) orelse
        DelaySeconds =:= none ->
-    Doc = sqs_xml_request(Config, QueueName, "SendMessage",
-                          [{"MessageBody", MessageBody},
-			   {"DelaySeconds", DelaySeconds}]),
-    erlcloud_xml:decode(
-      [
-       {message_id, "SendMessageResult/MessageId", text},
-       {md5_of_message_body, "SendMessageResult/MD5OfMessageBody", text}
-      ],
-      Doc
-     ).
+    NumMessages = length(Messages),
+    case NumMessages of
+        NumMessages when NumMessages >= 1 andalso NumMessages =< 10 ->
+            MessageBatch = build_message_batch_proplist(Messages),
+            Doc = sqs_xml_request(Config, QueueName, "SendMessageBatch",
+                                  MessageBatch ++
+                                  [{"DelaySeconds", DelaySeconds}]),
+            erlcloud_xml:decode(
+              [
+               {message_id, "SendMessageResult/MessageId", text},
+               {md5_of_message_body, "SendMessageResult/MD5OfMessageBody", text}
+              ],
+              Doc
+             );
+        _ ->
+            {error, "Batch size out of bounds"}
+    end.
+
+build_message_batch_proplist(Messages) ->
+    build_message_batch_proplist(lists:reverse(Messages), length(Messages), []).
+
+build_message_batch_proplist([], 0, Acc) ->
+    Acc;
+build_message_batch_proplist([M|Messages], N, Acc) ->
+    IdKey = io_lib:format("SendMessageBatchRequestEntry.~p.Id", [N]),
+    MsgKey = io_lib:format("SendMessageBatchRequestEntry.~p.MessageBody", [N]),
+    Entry = [{IdKey, integer_to_list(N)},
+             {MsgKey, M}],
+    build_message_batch_proplist(Messages, N-1, Entry ++ Acc).
 
 -spec set_queue_attributes/2 :: (string(), [{visibility_timeout, integer()} | {policy, string()}]) -> ok.
 set_queue_attributes(QueueName, Attributes) ->
