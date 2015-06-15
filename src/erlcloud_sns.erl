@@ -23,6 +23,7 @@
          publish_to_topic/2, publish_to_topic/3, publish_to_topic/4,
          publish_to_topic/5, publish_to_target/2, publish_to_target/3,
          publish_to_target/4, publish_to_target/5, publish/5,
+         list_topics/0, list_topics/1,
          list_platform_applications/0, list_platform_applications/1,
          list_platform_applications/2, list_platform_applications/3,
          confirm_subscription/1, confirm_subscription/2, confirm_subscription/3,
@@ -301,7 +302,20 @@ list_platform_applications(NextToken, Config) ->
 list_platform_applications(NextToken, AccessKeyID, SecretAccessKey) ->
     list_platform_applications(NextToken, new_config(AccessKeyID, SecretAccessKey)).
 
+-spec list_topics() -> [string()].
+-spec list_topics(aws_config()) -> [string()].
+list_topics() ->
+    list_topics(default_config()).
 
+list_topics(Config) ->
+    Params = [],
+    Doc = sns_xml_request(Config, "ListTopics", Params),
+    F = fun(Nodes) ->
+            [erlcloud_xml:decode([{arn, "TopicArn", text}], N) || N <- Nodes]
+        end,
+    Tmpl = [{topics, "ListTopicsResult/Topics/member", F}],
+    [{topics, Topics}] = erlcloud_xml:decode(Tmpl, Doc),
+    [Arn || [{arn, Arn}] <- Topics].
 
 -spec publish_to_topic/2 :: (string(), sns_message()) -> string().
 -spec publish_to_topic/3 :: (string(), sns_message(), undefined|string()) -> string().
