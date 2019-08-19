@@ -3,7 +3,7 @@
 
 {application, erlcloud,
  [{description, "AWS APIs library for Erlang"},
-  {vsn, "git"},
+  {vsn, git},
   {registered, []},
   {applications, [stdlib,
                   kernel,
@@ -20,6 +20,7 @@
   {modules, []},
   {env, []},
   {licenses, ["MIT"]},
-  {links, [{"Github", "https://github.com/erlcloud/erlcloud"}]}
+  {links, [{"Github", "https://github.com/erlcloud/erlcloud"}]},
+  {maintainers, []}
  ]
 }.
